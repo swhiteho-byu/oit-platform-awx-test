@@ -1,15 +1,14 @@
 ---
-
-- name: Network Getting Started First Playbook
-  connection: ansible.netcommon.network_cli
-  gather_facts: false
+- name: Gather facts from the host
   hosts: all
+  gather_facts: yes
+
   tasks:
-
-    - name: Get config for VyOS devices
-      ansible.builtin.setup:
-        gather_subset: all
-
-    - name: Display the config
+    - name: Get OS information
       debug:
-        msg: "The hostname is {{ ansible_net_hostname }} and the OS is {{ ansible_net_version }}"
+        msg: "Operating System: {{ ansible_os_family }} {{ ansible_distribution_version }}"
+
+
+    - name: Get hostname
+      debug:
+        msg: "Hostname: {{ ansible_hostname }}"
