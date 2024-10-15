@@ -1,0 +1,135 @@
+---
+- name: Set maximum ram usage threshold per host
+  set_fact:
+    ram_usage_threshold: 0.90
+
+- name: Remediate each noncompliant host one at a time
+  block:
+ 
+  - name: Gather Host Info
+    vmware.vmware_rest.vcenter_host_info:
+      vcenter_hostname: '{{ vsphere_hostname }}'
+      vcenter_username: '{{ vsphere_username }}'
+      vcenter_password: '{{ vsphere_password }}'
+    register: host_info
+    delegate_to: localhost
+  - name: Wait for ESXi hosts to equalize out VM resources
+    oit.linux.vmware_cluster_ram_percent:
+      vcenter_hostname: '{{ vsphere_hostname }}'
+      vcenter_username: '{{ vsphere_username }}'
+      vcenter_password: '{{ vsphere_password }}'
+      hostname: '{{ item }}'
+    register: hosts_result
+    delegate_to: localhost
+    until: hosts_result is succeeded and (hosts_result.hosts | map(attribute='ram_percent') | list | max) <= ram_usage_threshold
+    retries: 20
+    delay: 30
+    
+  - name: Display the host name being remediated
+    debug:
+       msg: "{{ item }}"
+
+  - name: Enter Maintenance Mode
+    community.vmware.vmware_maintenancemode:
+      hostname: '{{ vsphere_hostname }}'
+      username: '{{ vsphere_username }}'
+      password: '{{ vsphere_password }}'
+      esxi_hostname: '{{ item }}'
+      evacuate: true
+      timeout: 3600
+      state: present
+    delegate_to: localhost
+
+
+
+  - name: Disable alarms
+    oit.linux.vmware_host_alarms:
+      vcenter_hostname: "{{ vsphere_hostname  }}"
+      vcenter_username: "{{ vsphere_username }}"
+      vcenter_password: "{{ vsphere_password }}"
+      hostname: "{{ item }}"
+      state: "disabled"
+    delegate_to: localhost
+      
+      #- name: Remediate host 
+      #ansible.builtin.script:
+      #cmd: >
+      #files/remediate-hostimage.ps1
+      #-vsphere_hostname "{{ vsphere_hostname }}"
+      #-vsphere_username "{{ vsphere_username }}"
+      #-vsphere_password "{{ vsphere_password }}"
+      #-vsphere_cluster "{{ vsphere_cluster }}"
+      #-hostname "{{ item }}"
+      #executable: /bin/pwsh
+      #register: remediation_results
+      #ignore_unreachable: true
+      #delegate_to: localhost
+
+
+- name: Wait for ESXi host to be available
+  block:
+    - name: Check host connection state
+      vmware.vmware_rest.vcenter_host_info:
+        vcenter_hostname: '{{ vsphere_hostname }}'
+        vcenter_username: '{{ vsphere_username }}'
+        vcenter_password: '{{ vsphere_password }}'
+        names: '{{ item }}'
+      register: host_info
+      delegate_to: localhost
+      until: host_info.value[0].connection_state == 'CONNECTED'
+      retries: 20
+      delay: 30  # Optional delay between retries
+        
+    - name: Fail if host is not connected
+      ansible.builtin.fail:
+        msg: "Host {{ host_info.value[0].name }} ({{ host_info.value[0].host }}) is not connected after waiting. Current state: {{ host_info.value[0].connection_state }}"
+      when: host_info.value[0].connection_state != 'CONNECTED'
+      delegate_to: localhost
+
+
+
+- name: Execute PowerShell script to remediate host profile
+  ansible.builtin.script:
+    cmd: >
+      files/remediate_host_profile.ps1
+      -vsphere_hostname "{{ vsphere_hostname }}"
+      -vsphere_username "{{ vsphere_username }}"
+      -vsphere_password "{{ vsphere_password }}"
+      -inventory_hostname: "{{ item }}"
+      
+    executable: /bin/pwsh
+  register: remediation_profile_results
+  ignore_unreachable: true
+  delegate_to: localhost
+
+
+
+- name: Exit Maintenance Mode
+  community.vmware.vmware_maintenancemode:
+    hostname: '{{ vsphere_hostname }}'
+    username: '{{ vsphere_username }}'
+    password: '{{ vsphere_password }}'
+    esxi_hostname: '{{ item }}'
+    vsan: ensureObjectAccessibility
+    evacuate: true
+    timeout: 3600
+    state: absent
+  delegate_to: localhost
+
+- name: Enable alarms
+  oit.linux.vmware_host_alarms:
+    vcenter_hostname: "{{ vsphere_hostname  }}"
+    vcenter_username: "{{ vsphere_username }}"
+    vcenter_password: "{{ vsphere_password }}"
+    hostname: "{{ item }}"
+    state: "enabled"
+  delegate_to: localhost
+
+
+- name: Fail if host is unreachable
+  block:
+    - name: Fail if host is unreachable
+      ansible.builtin.fail:
+        msg: "Host is unreachable"
+  when: result.unreachable is defined and result.unreachable | default(false)
+  

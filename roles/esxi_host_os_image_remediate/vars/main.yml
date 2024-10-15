@@ -1,0 +1,6 @@
+vsphere_password: "Jqk+#(RrsKB>"
+vsphere_hostname: "oitvc-stage.opp.byu.edu"
+vsphere_username: "oitoppvc-service@byu.local"
+vsphere_cluster: "OITVCSTAGE"
+inventory_hostname: "neon01"
+new_host_profile: "hostprofile"

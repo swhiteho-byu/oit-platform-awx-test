@@ -1,0 +1,88 @@
+---
+- name: Test OS remediation
+  hosts: esx
+  vars:
+    vsphere_password: "Jqk+#(RrsKB>" 
+    
+  tasks:
+    - name: Print the VM password
+      debug:
+        msg:
+          - "The VM password is: {{ vsphere_password }}"
+          - "The VM hostname is: {{ vsphere_hostname }}"
+          - "The VM username is: {{ vsphere_username }}"
+
+    - name: Execute PowerShell script
+      ansible.builtin.script:
+        cmd: >
+          files/get-clusterstate.ps1
+          -vsphere_hostname "{{ vsphere_hostname }}"
+          -vsphere_username "{{ vsphere_username }}"
+          -vsphere_password "{{ vsphere_password }}"
+          -vsphere_cluster "{{ vsphere_cluster }}"
+          -inventory_hostname "{{ inventory_hostname }}"
+          -new_host_profile "{{ new_host_profile }}"
+        executable: /bin/pwsh
+      register: cluster_state_data
+      ignore_unreachable: true
+      delegate_to: localhost
+
+    - name: Print the VM output
+      debug:
+        msg:
+          - "PS script output is: {{ cluster_state_data }}"
+
+    - name: Convert the output to a list
+      set_fact:
+        cluster_state_data: "{{ cluster_state_data.stdout.splitlines() }}"
+
+    - name: Set RAM usage threshold
+      set_fact:
+        ram_usage_threshold: 0.90
+
+    - name: Display the list
+      debug:
+        var: cluster_state_data
+
+    - name: Check if reboot required and split the list
+      block:
+        - name: Check if reboot required and split the list
+          set_fact:
+            cluster_hosts_to_remediate: "{{ cluster_state_data[1:] }}"
+          when: cluster_state_data == 'RebootRequired'
+
+        - name: Display the list
+          debug:
+            msg: "{{ cluster_hosts_to_remediate }}"
+          when: cluster_state_data == 'RebootRequired'
+
+    - name: Perform tasks to remediate hosts requiring maintenance mode and reboot
+      include_tasks: tasks_loop.yml
+      loop: "{{ cluster_hosts_to_remediate }}"
+      when: cluster_state_data == 'RebootRequired'
+
+    - name: Remediate cluster when no reboot is required, skipping maintenance mode
+      ansible.builtin.script:
+        cmd: >
+          files/remediate-cluster.ps1
+          -vsphere_hostname "{{ vsphere_hostname }}"
+          -vsphere_username "{{ vsphere_username }}"
+          -vsphere_password "{{ vsphere_password }}"
+          -vsphere_cluster "{{ vsphere_cluster }}"
+        executable: /bin/pwsh
+      register: remediation_results
+      ignore_unreachable: true
+      delegate_to: localhost
+      when: cluster_state_data == 'NoImpact'
+
+    - name: When cluster is compliant, print message
+      debug:
+        msg: "Cluster is compliant, nothing to do."
+      when: cluster_state_data == 'Compliant'
+
+    - name: Fail if host is unreachable
+      block:
+        - name: Fail if host is unreachable
+          ansible.builtin.fail:
+            msg: "Host is unreachable"
+      when: result.unreachable is defined and result.unreachable | default(false)

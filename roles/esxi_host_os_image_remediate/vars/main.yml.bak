@@ -1,0 +1,5 @@
+vsphere_hostname: "oitvc-stage.opp.byu.edu"
+vsphere_username: "oitoppvc-service@byu.local"
+vsphere_cluster: "OITVCSTAGE"
+inventory_hostname: "neon02"
+new_host_profile: "hostprofile"
