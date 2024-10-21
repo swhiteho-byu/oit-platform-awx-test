@@ -15,9 +15,9 @@
 
     - name: Start ssh setting for an ESXi Host
       community.vmware.vmware_host_service_manager:
-        hostname: '{{ vsphere_hostname }}'
-        username: '{{ vsphere_username }}'
-        password: '{{ vsphere_password }}'
+        #hostname: '{{ vsphere_hostname }}'
+        #username: '{{ vsphere_username }}'
+        #password: '{{ vsphere_password }}'
         esxi_hostname: '{{ inventory_hostname }}'
         service_name: sshd
         state: present
