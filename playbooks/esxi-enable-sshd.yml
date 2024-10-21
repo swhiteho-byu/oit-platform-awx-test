@@ -1,5 +1,5 @@
 ---
-- hosts: "localhost"
+- hosts: all
   gather_facts: no
   name: ESXi Enable sshd
   gather_facts: false
@@ -15,6 +15,7 @@
 
     - name: Start ssh setting for an ESXi Host
       community.vmware.vmware_host_service_manager:
+        #Don't add info and AWX will pull proper variables from the credentials.
         #hostname: '{{ vsphere_hostname }}'
         #username: '{{ vsphere_username }}'
         #password: '{{ vsphere_password }}'
