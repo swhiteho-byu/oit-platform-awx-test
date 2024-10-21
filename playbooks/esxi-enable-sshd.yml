@@ -1,15 +1,19 @@
 ---
-- name: Gather facts from the host
-  hosts: all
-  gather_facts: no
-
+- hosts: "{{ host_group }}"
+  name: ESXi Enable sshd
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  order: sorted
+  
   tasks:
-  - name: Start ssh setting for an ESXi Host
-    community.vmware.vmware_host_service_manager:
-      hostname: '{{ vcenter_hostname }}'
-      username: '{{ vcenter_username }}'
-      password: '{{ vcenter_password }}'
-      esxi_hostname: '{{ esxi_hostname }}'
-      service_name: sshd
-      state: present
-    delegate_to: localhost
+    - name: Start ssh setting for an ESXi Host
+      community.vmware.vmware_host_service_manager:
+        hostname: '{{ vsphere_hostname }}'
+        username: '{{ vsphere_username }}'
+        password: '{{ vsphere_password }}'
+        esxi_hostname: '{{ inventory_hostname }}'
+        service_name: sshd
+        state: present
+      register: host_info
+      delegate_to: localhost
