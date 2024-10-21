@@ -20,7 +20,7 @@
         #username: '{{ vsphere_username }}'
         #password: '{{ vsphere_password }}'
         esxi_hostname: '{{ inventory_hostname }}'
-        service_name: sshd
+        service_name: TSM-SSH
         state: present
       register: host_info
       delegate_to: localhost
