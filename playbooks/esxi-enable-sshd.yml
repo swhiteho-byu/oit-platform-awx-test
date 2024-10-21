@@ -1,6 +1,5 @@
 ---
-- hosts: "{{ host_group }}"
-  name: ESXi Enable sshd
+- name: ESXi Enable sshd
   gather_facts: false
   serial: 1
   any_errors_fatal: true
