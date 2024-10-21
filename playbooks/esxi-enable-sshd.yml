@@ -1,7 +1,7 @@
 ---
 - hosts: "localhost"
   gather_facts: no
-- name: ESXi Enable sshd
+  name: ESXi Enable sshd
   gather_facts: false
   serial: 1
   any_errors_fatal: true
