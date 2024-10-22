@@ -8,11 +8,6 @@
   order: sorted
   
   tasks:
-    - name: Print all variables
-      ansible.builtin.debug:
-        var: vars
-
-
     - name: Start ssh setting for an ESXi Host
       community.vmware.vmware_host_service_manager:
         #Don't add info and AWX will pull proper variables from the credentials.
